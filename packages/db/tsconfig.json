@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    
+    // ✅ 1. Standard Output Folder
+    "outDir": "./dist",
+    
+    // ✅ 2. Strict Root (This prevents 'dist/src/' nesting)
+    "rootDir": "./src", 
+    
+    // ✅ 3. Build Settings
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src/**/*"]
+}
