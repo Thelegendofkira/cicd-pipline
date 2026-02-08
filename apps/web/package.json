@@ -4,18 +4,19 @@
   "type": "module",
   "private": true,
   "scripts": {
-   "dev": "dotenv -e ../../.env -- next dev --port 3000",
-  "build": "dotenv -e ../../.env -- next build",
-  "start": "dotenv -e ../../.env -- next start",
+    "dev": "dotenv -e ../../.env -- next dev --port 3000",
+    "build": "dotenv -e ../../.env -- next build",
+    "start": "dotenv -e ../../.env -- next start",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@repo/db": "*",
     "@repo/ui": "*",
+    "lucide-react": "^0.563.0",
     "next": "16.1.5",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "@repo/db":"*"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
