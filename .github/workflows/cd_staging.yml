@@ -14,69 +14,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH and Deploy
-        run: |
-          # 1. Create the .ssh directory
-          mkdir -p ~/.ssh/
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 1. Setup Environment (Load Node.js)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
-          # 2. Write the Private Key to a file
-          # We use specific quoting to handle newlines correctly
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-
-          # 3. Set strict permissions (Required by SSH)
-          chmod 600 ~/.ssh/id_rsa
-
-          # 4. Add your EC2 host to known_hosts to prevent "Host verification failed"
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-          # 5. Connect and Run Commands
-          # We use 'bash -c' to group all commands into one session
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.SSH_HOST }} "bash -c '
-            
-            # --- A. Setup Environment ---
-            # This is CRITICAL. SSH shells are non-interactive, so they don't load Node by default.
-            export NVM_DIR=\"\$HOME/.nvm\"
-            [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
-
-            # Navigate to project folder
+            # 2. Navigate to Project
             cd ~/cicd-pipline
 
-            # Pull the latest code
-            echo \"⬇️ Pulling latest changes...\"
-            git pull origin main
-
-            # Install any new dependencies
-            echo \"📦 Installing dependencies...\"
+            # 3. 🚨 FIX: Force Sync with GitHub 
+            # (Discards manual server edits that were causing the 'Aborting' error)
+            git fetch --all
+            git reset --hard origin/main
+            
+            # 4. Install Dependencies
+            echo "📦 Installing dependencies..."
             npm install
 
-            # --- B. Clean & Rebuild Database ---
-            echo \"🗄️ Rebuilding Database...\"
+            # 5. Clean & Rebuild Database
+            echo "🗄️ Rebuilding Database..."
             cd packages/db
-            # Clean the old build cache (as you requested)
             npx tsc -b --clean
-            # Generate Client & Rebuild
             npx prisma generate
             npx tsc -b
             cd ../..
 
-            # --- C. Clean & Rebuild Web ---
-            echo \"🌐 Rebuilding Next.js Web App...\"
+            # 6. Clean & Rebuild Web App
+            echo "🌐 Rebuilding Next.js Web App..."
             cd apps/web
-            # Wipe the memory (clean build)
             rm -rf .next
             cd ../..
 
-            # --- D. Global Build ---
-            # Runs the build for all apps (Web, WebSocket, HTTP) in correct order
-            echo \"🏗️ Running Global Build...\"
+            # 7. Global Build
+            echo "🏗️ Running Global Build..."
             npm run build
 
-            # --- E. Restart PM2 Services ---
-            echo \"🚀 Restarting Servers...\"
-            # We use 'restart' so they keep their existing config/ports
+            # 8. Restart PM2 Services
+            echo "🚀 Restarting Servers..."
             pm2 restart https-server
             pm2 restart websocket
-            pm2 restart web-server 
-            
-            echo \"✅ Deployment Complete!\"
-          '"
+            pm2 restart web-server
+
+            echo "✅ Deployment Complete!"
