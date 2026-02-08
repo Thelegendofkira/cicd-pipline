@@ -3,7 +3,7 @@ import {prisma} from "@repo/db"
 const app=express()
 app.use(express.json())
 app.get("/",async (req,res)=>{
- res.send("this is express server")
+ res.send("this is express server by jaideep")
 })
 app.post("/signup",async (req,res)=>{
     try{
