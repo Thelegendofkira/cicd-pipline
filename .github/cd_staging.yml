@@ -1,0 +1,82 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH and Deploy
+        run: |
+          # 1. Create the .ssh directory
+          mkdir -p ~/.ssh/
+
+          # 2. Write the Private Key to a file
+          # We use specific quoting to handle newlines correctly
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+          # 3. Set strict permissions (Required by SSH)
+          chmod 600 ~/.ssh/id_rsa
+
+          # 4. Add your EC2 host to known_hosts to prevent "Host verification failed"
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+          # 5. Connect and Run Commands
+          # We use 'bash -c' to group all commands into one session
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.SSH_HOST }} "bash -c '
+            
+            # --- A. Setup Environment ---
+            # This is CRITICAL. SSH shells are non-interactive, so they don't load Node by default.
+            export NVM_DIR=\"\$HOME/.nvm\"
+            [ -s \"\$NVM_DIR/nvm.sh\" ] && \. \"\$NVM_DIR/nvm.sh\"
+
+            # Navigate to project folder
+            cd ~/cicd-pipline
+
+            # Pull the latest code
+            echo \"⬇️ Pulling latest changes...\"
+            git pull origin main
+
+            # Install any new dependencies
+            echo \"📦 Installing dependencies...\"
+            npm install
+
+            # --- B. Clean & Rebuild Database ---
+            echo \"🗄️ Rebuilding Database...\"
+            cd packages/db
+            # Clean the old build cache (as you requested)
+            npx tsc -b --clean
+            # Generate Client & Rebuild
+            npx prisma generate
+            npx tsc -b
+            cd ../..
+
+            # --- C. Clean & Rebuild Web ---
+            echo \"🌐 Rebuilding Next.js Web App...\"
+            cd apps/web
+            # Wipe the memory (clean build)
+            rm -rf .next
+            cd ../..
+
+            # --- D. Global Build ---
+            # Runs the build for all apps (Web, WebSocket, HTTP) in correct order
+            echo \"🏗️ Running Global Build...\"
+            npm run build
+
+            # --- E. Restart PM2 Services ---
+            echo \"🚀 Restarting Servers...\"
+            # We use 'restart' so they keep their existing config/ports
+            pm2 restart https-server
+            pm2 restart websocket
+            pm2 restart web-server 
+            
+            echo \"✅ Deployment Complete!\"
+          '"

@@ -9,7 +9,7 @@
     "dev": "npm run build && npm run start"
   },
   "dependencies": {
-    "@repo/db": "^1.0.0",
+    "@repo/db": "*",
     "@repo/typescript-config": "*",
     "@types/express": "^5.0.6",
     "express": "^5.2.1"

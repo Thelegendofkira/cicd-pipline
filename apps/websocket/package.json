@@ -19,7 +19,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@repo/db": "^1.0.0",
+    "@repo/db": "*",
     "ws": "^8.19.0"
   }
 }
